@@ -12,7 +12,7 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle'
 
 group = 'ru.xlv'
-version = '1.12.2-0.0.1'
+version = '1.12.2-0.0.2'
 archivesBaseName = 'libloader'
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8'
