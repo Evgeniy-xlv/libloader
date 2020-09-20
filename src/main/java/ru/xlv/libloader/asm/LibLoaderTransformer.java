@@ -20,6 +20,19 @@ public class LibLoaderTransformer implements IClassTransformer {
 
     private final Logger logger = Logger.getLogger(LibLoaderTransformer.class.getSimpleName());
 
+    private final List<String> loaded = new ArrayList<>();
+    {
+        File dir = new File("mods");
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if(file.isFile()) {
+                    loaded.add(file.getName());
+                }
+            }
+        }
+    }
+
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         ClassReader classReader = new ClassReader(basicClass);
@@ -34,25 +47,31 @@ public class LibLoaderTransformer implements IClassTransformer {
                         if(visibleAnnotation1.desc.equals("Lru/xlv/libloader/DependsOn;")) {
                             ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
                             if (visibleAnnotation1.values.size() > 1 && visibleAnnotation1.values.get(1) instanceof ArrayList) {
+                                //noinspection unchecked
                                 List<String> urls = (ArrayList<String>) visibleAnnotation1.values.get(1);
                                 for (String url : urls) {
-                                    logger.info("- Downloading: " + url);
-                                    File file = new File("mods", url.substring(url.lastIndexOf("/") + 1));
-                                    try {
-                                        BufferedInputStream bufferedInputStream = new BufferedInputStream(new URL(url).openStream());
-                                        FileOutputStream fileOutputStream = new FileOutputStream(file);
-                                        byte[] dataBuffer = new byte[1024];
-                                        int bytesRead;
-                                        while ((bytesRead = bufferedInputStream.read(dataBuffer, 0, 1024)) != -1) {
-                                            fileOutputStream.write(dataBuffer, 0, bytesRead);
+                                    String fName = url.substring(url.lastIndexOf("/") + 1);
+                                    if(!loaded.contains(fName)) {
+                                        logger.info("- Downloading: " + url);
+                                        File file = new File("mods", fName);
+                                        try {
+                                            BufferedInputStream bufferedInputStream = new BufferedInputStream(new URL(url).openStream());
+                                            FileOutputStream fileOutputStream = new FileOutputStream(file);
+                                            byte[] dataBuffer = new byte[1024];
+                                            int bytesRead;
+                                            while ((bytesRead = bufferedInputStream.read(dataBuffer, 0, 1024)) != -1) {
+                                                fileOutputStream.write(dataBuffer, 0, bytesRead);
+                                            }
+                                            fileOutputStream.flush();
+                                            fileOutputStream.close();
+                                            bufferedInputStream.close();
+                                            Loader.instance().getModClassLoader().addFile(file);
+                                            logger.info("- Done.");
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
                                         }
-                                        fileOutputStream.flush();
-                                        fileOutputStream.close();
-                                        bufferedInputStream.close();
-                                        Loader.instance().getModClassLoader().addFile(file);
-                                        logger.info("- Done.");
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    } else {
+                                        logger.info("- Skipping: " + url);
                                     }
                                 }
                                 logger.info("All libraries have been successfully downloaded and installed.");
